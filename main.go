@@ -10,7 +10,6 @@ import (
 func registerHandlers() *httprouter.Router {
 	router := httprouter.New()
 
-	router.GET("/", handlers.Index)
 	router.GET("/ws", handlers.WS)
 
 	return router

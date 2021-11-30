@@ -24,5 +24,12 @@ func WS(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		return
 	}
 
-	cl.Run()
+	for {
+		_, message, err := cl.Conn.ReadMessage()
+		if err != nil {
+			log.Printf("ReadMessag Error: %v", err)
+			break
+		}
+		cl.Broadcast(string(message))
+	}
 }

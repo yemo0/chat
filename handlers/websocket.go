@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -17,77 +15,30 @@ var upGrader = websocket.Upgrader{
 	},
 }
 
-type client struct {
-	Id   string
-	Conn *websocket.Conn
-}
-
 // 在线列表
-var connList []*client
-
-func NewSocketClient(w http.ResponseWriter, r *http.Request, id string) (cl *client, err error) {
-	ws, err := upGrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("Upgrade Error: %v", err)
-		return
-	}
-
-	// defer ws.Close()
-
-	cl = &client{
-		Id:   id,
-		Conn: ws,
-	}
-
-	connList = append(connList, cl)
-
-	return cl, nil
-	// wslist = append(wslist, ws)
-
-	// for {
-	// 	mt, message, err := ws.ReadMessage()
-	// 	if err != nil {
-	// 		break
-	// 	}
-	// 	fmt.Printf("massageType: %v "+string(message)+"\n", mt)
-
-	// 	err = ws.WriteMessage(1, message)
-	// 	if err != nil {
-	// 		fmt.Printf("WriteMessage Error: %v", err)
-	// 		break
-	// 	}
-
-	// 	fmt.Println("100")
-	// 	err = cl.Conn.WriteMessage(1, []byte("早上好"))
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// 	time.Sleep(time.Second)
-	// }
-	// return cl, nil
-
+type AliveList struct {
+	ConnList  map[string]*Client
+	register  chan *Client
+	destroy   chan *Client
+	broadcast chan string // Message
+	cancel    chan int
+	Len       int
 }
 
-func (cl *client) Run() {
-	for {
-		_, message, err := cl.Conn.ReadMessage()
-		if err != nil {
-			break
-		}
-		fmt.Printf("massageType: %v "+string(message)+"\n", cl.Id)
+type Client struct {
+	Id     string
+	Conn   *websocket.Conn
+	cancel chan int
+}
 
-		for _, v := range connList {
-			fmt.Println(cl.Id + "              " + v.Id)
-			if v.Id != cl.Id {
-				err = v.Conn.WriteMessage(1, message)
-				if err != nil {
-					fmt.Printf("WriteMessage Error: %v", err)
-					break
-				}
-			}
-		}
-
-		// cl.Conn.WriteMessage(1, []byte("ok"))
-		// time.Sleep(time.Second * 1)
-	}
+type Message struct {
+	ID         string                 // 发送消息id
+	Content    string                 // 消息内容
+	SentAt     int64                  `json:"sent_at"` // 发送时间
+	Type       int                    // 消息类型, 如 BroadcastMessage
+	From       string                 // 发送人client id
+	To         []string               // 接收人client id, 根据消息类型来说, 单发, 群发, 广播什么的, 具体处理在Event中处理
+	FromUserID string                 `json:"from_user_id"` // 发送者用户业务id
+	ToUserID   string                 `json:"to_user_id"`   // 接受者用户业务id
+	Ext        map[string]interface{} `json:"ext"`          // 扩展字段, 按需使用
 }
